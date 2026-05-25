@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="AllOfOurVotes mark">
+  <title>AllOfOurVotes</title>
+  
+  <rect x="0" y="0" width="14" height="32" fill="currentColor"></rect>
+  <rect x="18" y="0" width="6" height="32" fill="currentColor" opacity="0.55"></rect>
+  <rect x="27" y="0" width="3" height="32" fill="currentColor" opacity="0.30"></rect>
+</svg>

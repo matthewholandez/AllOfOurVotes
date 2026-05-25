@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100" width="200" height="100" role="img" aria-label="AllOfOurVotes.org">
+  <title>AllOfOurVotes.org</title>
+  
+  <g transform="translate(0,8)">
+    <rect x="0" y="0" width="22" height="50" fill="currentColor"></rect>
+    <rect x="28" y="0" width="10" height="50" fill="currentColor" opacity="0.55"></rect>
+    <rect x="42" y="0" width="5" height="50" fill="currentColor" opacity="0.30"></rect>
+  </g>
+  <text x="0" y="92" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-weight="700" font-size="22" letter-spacing="-0.5" fill="currentColor">AllOfOurVotes<tspan font-weight="400" opacity="0.55">.org</tspan></text>
+</svg>

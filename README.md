@@ -1,7 +1,7 @@
 <div align="center">
+<img width=128 src="assets/favicon.svg">
 <h1>AllOfOurVotes.org</h1>
 <p>Increasing transparency around how countries vote on key issues in the UN.</p>
-<p>See how the project is doing <a href="https://allofourvotes.org">here.</a></p>
 </div>
 
 ## Architecture
@@ -13,3 +13,7 @@
 ## Acknowledgements
 
 Inspired by [HowTheyVote.eu](https://howtheyvote.eu), [OpenParliament.ca](https://openparliament.ca).
+
+## License
+
+[MIT](LICENSE)

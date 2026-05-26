@@ -376,6 +376,7 @@ hr.section-rule { border: 0; border-top: 1px solid var(--rule); margin: 32px 0; 
 .subject-index a { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--rule-hair); font-size: 13px; text-decoration: none; color: inherit; break-inside: avoid; }
 .subject-index a:hover { color: var(--accent-2); }
 .subject-index a .id { font-family: var(--mono); font-size: 10px; color: var(--fg-3); }
+.subject-parents { display: block; font-size: 11px; color: var(--fg-3); font-style: italic; margin-top: 2px; }
 
 /* Vote table on detail */
 .votes-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }

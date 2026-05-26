@@ -1,6 +1,21 @@
 <script>
   let { data } = $props();
 
+  let nameById = $derived.by(() => {
+    const m = new Map();
+    for (const s of data.subjects) m.set(s.id, s.name);
+    return m;
+  });
+
+  function parentLabel(s) {
+    if (!s.parent_ids?.length) return null;
+    const names = s.parent_ids
+      .map((id) => nameById.get(id))
+      .filter(Boolean)
+      .map((n) => n.toLowerCase());
+    return names.length ? `under ${names.slice(0, 3).join(', ')}${names.length > 3 ? '…' : ''}` : null;
+  }
+
   let q = $state('');
   let filtered = $derived.by(() => {
     const needle = q.trim().toLowerCase();
@@ -60,8 +75,13 @@
           <div class="subject-index">
             {#each group as s (s.id)}
               <a href="/subjects/{s.id}">
-                <span>{s.name}</span>
-                <span class="id">№{s.id}</span>
+                <span>
+                  {s.name}
+                  {#if parentLabel(s)}
+                    <span class="subject-parents">{parentLabel(s)}</span>
+                  {/if}
+                </span>
+                <span class="id">{s.resolution_count.toLocaleString()}</span>
               </a>
             {/each}
           </div>

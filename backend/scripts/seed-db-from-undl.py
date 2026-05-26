@@ -118,21 +118,21 @@ def drafts_to_pg_array(drafts):
 def parse_subjects(s):
     """Return a list of subject paths, each a tuple of hierarchy segments.
 
-    Source format inside one comma-separated grouping: `|` separates distinct
-    top-level topical references; `--` separates parent → subtopic levels
-    within a reference. So `AFRICA--REGIONAL SECURITY|TERRORISM` yields two
-    paths: ('AFRICA', 'REGIONAL SECURITY') and ('TERRORISM',).
+    `|` separates distinct top-level topical references; `--` separates
+    parent → subtopic levels within a reference. So
+    `AFRICA--REGIONAL SECURITY|TERRORISM` yields two paths:
+    ('AFRICA', 'REGIONAL SECURITY') and ('TERRORISM',). Commas are intrinsic
+    to subject names (e.g. `GENERAL ASSEMBLY (10TH SPEC. SESS., 1978)`).
     """
     s = clean(s)
     if s is None:
         return []
     paths = []
-    for piece in s.split(","):
-        for ref in piece.split("|"):
-            segments = tuple(seg.strip() for seg in ref.split("--"))
-            segments = tuple(seg for seg in segments if seg)
-            if segments:
-                paths.append(segments)
+    for ref in s.split("|"):
+        segments = tuple(seg.strip() for seg in ref.split("--"))
+        segments = tuple(seg for seg in segments if seg)
+        if segments:
+            paths.append(segments)
     return paths
 
 

@@ -20,14 +20,24 @@
   let pageCount = $derived(Math.max(1, Math.ceil(total / data.limit)));
   let pageNum = $derived(data.page);
 
-  // Pipe-delimited names imply hierarchy — surface as a breadcrumb of parts
-  let nameParts = $derived(data.subject.name.split('|'));
+  let displayName = $derived(
+    data.subject.name
+      .toLowerCase()
+      .replace(/(^|[\s\-(])([a-z])/g, (_, p, c) => p + c.toUpperCase())
+  );
+
+  let parents = $derived.by(() => {
+    const ids = data.subject.parent_ids ?? [];
+    return ids
+      .map((id) => data.subjects.find((s) => s.id === id))
+      .filter(Boolean);
+  });
 
   let related = $derived(data.subjects.filter((s) => s.id !== data.subject.id).slice(0, 18));
 </script>
 
 <svelte:head>
-  <title>{data.subject.name} — AllOfOurVotes</title>
+  <title>{displayName} — AllOfOurVotes</title>
 </svelte:head>
 
 <main>
@@ -37,15 +47,21 @@
       <span class="sep">/</span>
       <a href="/subjects">Topics</a>
       <span class="sep">/</span>
-      <span style="color: var(--fg);">{nameParts[nameParts.length - 1]}</span>
+      <span style="color: var(--fg);">{displayName}</span>
     </div>
 
     <header class="topic-head">
       <div>
         <span class="kicker">Topic № {data.subject.id}</span>
-        <h1>{nameParts.map((p) => p.trim().toLowerCase()).map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(' · ')}</h1>
+        <h1>{displayName}</h1>
+        {#if parents.length}
+          <p class="desc" style="margin-bottom: 8px;">
+            Appears under:
+            {#each parents as p, i (p.id)}<a href="/subjects/{p.id}" style="color: var(--accent-2);">{p.name}</a>{#if i < parents.length - 1}, {/if}{/each}
+          </p>
+        {/if}
         <p class="desc">
-          {total.toLocaleString()} resolution{total === 1 ? '' : 's'} indexed under this topic in the UN Digital Library bibliographic record.
+          {total.toLocaleString()} resolution{total === 1 ? '' : 's'} indexed under this topic{parents.length > 1 ? ' (across all parent contexts)' : ''} in the UN Digital Library bibliographic record.
         </p>
       </div>
       <div class="topic-summary">

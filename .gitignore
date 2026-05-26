@@ -1,2 +1,4 @@
 backend/data/undl/*
 backend/out/*
+
+.env

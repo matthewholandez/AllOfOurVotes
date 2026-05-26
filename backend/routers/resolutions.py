@@ -64,6 +64,8 @@ class ResolutionDetail(BaseModel):
 class SubjectSummary(BaseModel):
     id: int
     name: str
+    parent_ids: list[int]
+    resolution_count: int
 
 
 @router.get("/resolutions", response_model=ResolutionPage)
@@ -91,21 +93,35 @@ async def list_resolutions(
         add("r.vote_date <= ?", to_date)
     if subject_id is not None:
         add(
-            "EXISTS (SELECT 1 FROM resolution_subjects rs WHERE rs.undl_id = r.undl_id AND rs.subject_id = ?)",
+            "EXISTS (SELECT 1 FROM resolution_subjects rs "
+            "JOIN subject_descendants sd ON sd.id = rs.subject_id "
+            "WHERE rs.undl_id = r.undl_id AND sd.root_id = ?)",
             subject_id,
         )
 
     where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
-    base_sql = f"FROM resolutions r {where}"
+    cte = ""
+    if subject_id is not None:
+        sid_param = f"${params.index(subject_id) + 1}"
+        cte = (
+            f"WITH RECURSIVE subject_descendants(root_id, id) AS ("
+            f"  SELECT id, id FROM subjects WHERE id = {sid_param} "
+            f"  UNION "
+            f"  SELECT d.root_id, sp.child_id FROM subject_parents sp "
+            f"  JOIN subject_descendants d ON sp.parent_id = d.id"
+            f") "
+        )
+    from_clause = f"FROM resolutions r {where}"
 
     async with request.app.state.db.acquire() as conn:
-        total = await conn.fetchval(f"SELECT COUNT(*) {base_sql}", *params)
+        total = await conn.fetchval(f"{cte}SELECT COUNT(*) {from_clause}", *params)
         n = len(params)
         rows = await conn.fetch(
             f"""
+            {cte}
             SELECT undl_id, resolution_code, vote_date, body, title,
                    total_yes, total_no, total_abstentions, total_non_voting, total_ms
-            {base_sql}
+            {from_clause}
             ORDER BY vote_date DESC
             LIMIT ${n + 1} OFFSET ${n + 2}
             """,
@@ -163,5 +179,29 @@ async def get_resolution(undl_id: int, request: Request):
 @router.get("/subjects", response_model=list[SubjectSummary])
 async def list_subjects(request: Request):
     async with request.app.state.db.acquire() as conn:
-        rows = await conn.fetch("SELECT id, name FROM subjects ORDER BY name")
+        rows = await conn.fetch(
+            """
+            WITH RECURSIVE descendants(root_id, id) AS (
+                SELECT id, id FROM subjects
+                UNION
+                SELECT d.root_id, sp.child_id
+                FROM subject_parents sp
+                JOIN descendants d ON sp.parent_id = d.id
+            )
+            SELECT
+                s.id,
+                s.name,
+                COALESCE(
+                    (SELECT array_agg(sp.parent_id ORDER BY sp.parent_id)
+                     FROM subject_parents sp WHERE sp.child_id = s.id),
+                    ARRAY[]::int[]
+                ) AS parent_ids,
+                (SELECT COUNT(DISTINCT rs.undl_id)
+                 FROM descendants d
+                 JOIN resolution_subjects rs ON rs.subject_id = d.id
+                 WHERE d.root_id = s.id) AS resolution_count
+            FROM subjects s
+            ORDER BY s.name
+            """
+        )
     return [dict(r) for r in rows]

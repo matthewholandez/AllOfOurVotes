@@ -3,6 +3,14 @@
 Outputs six CSVs to out/ ready for `psql \\copy`. Does not connect to Postgres.
 Idempotent: same inputs produce byte-identical outputs.
 
+Subjects are hierarchical. In the source `subjects` cell, `|` separates distinct
+top-level topical references and `--` separates parent → subtopic levels within
+a reference. We model this as a DAG: `subjects` holds globally-unique names,
+and `subject_parents(child_id, parent_id)` is a many-to-many junction (REPORTS,
+UN, RECOMMENDATIONS etc. legitimately appear under many parents). Each
+|-separated reference links its leaf segment to the resolution in
+`resolution_subjects`; ancestor queries use a recursive CTE.
+
 Schema (countries holds only the FK anchor; country_names is the source of truth
 for any human-readable name, time-ranged so historical votes resolve correctly):
 
@@ -108,10 +116,24 @@ def drafts_to_pg_array(drafts):
 
 
 def parse_subjects(s):
+    """Return a list of subject paths, each a tuple of hierarchy segments.
+
+    Source format inside one comma-separated grouping: `|` separates distinct
+    top-level topical references; `--` separates parent → subtopic levels
+    within a reference. So `AFRICA--REGIONAL SECURITY|TERRORISM` yields two
+    paths: ('AFRICA', 'REGIONAL SECURITY') and ('TERRORISM',).
+    """
     s = clean(s)
     if s is None:
         return []
-    return [sub.strip() for sub in s.split(",") if sub.strip()]
+    paths = []
+    for piece in s.split(","):
+        for ref in piece.split("|"):
+            segments = tuple(seg.strip() for seg in ref.split("--"))
+            segments = tuple(seg for seg in segments if seg)
+            if segments:
+                paths.append(segments)
+    return paths
 
 
 def parse_bool(s):
@@ -263,8 +285,19 @@ def ingest():
     unresolved_pairs: set[tuple[str, str]] = set()
     resolutions: dict[int, dict] = {}
     votes: list[dict] = []
-    subject_set: set[str] = set()
+    # Subject names are globally unique. Same name under different parents is
+    # the same node — the parent relationship is a DAG, not a tree (REPORTS
+    # legitimately appears under many parents).
+    subject_names: set[str] = set()
+    subject_edges: set[tuple[str, str]] = set()  # (child_name, parent_name)
+    # (undl_id, leaf_name) — each |-separated reference links to its leaf only.
     resolution_subjects: set[tuple[int, str]] = set()
+
+    def register_subject(path):
+        for seg in path:
+            subject_names.add(seg)
+        for i in range(1, len(path)):
+            subject_edges.add((path[i], path[i - 1]))
 
     def log_skip(source, line, reason):
         skipped.append(f"{source}:{line}:{reason}")
@@ -346,9 +379,9 @@ def ingest():
         }
         process_resolution(undl_id, res_fields, source, line)
 
-        for subj in subjects:
-            subject_set.add(subj)
-            resolution_subjects.add((undl_id, subj))
+        for path in subjects:
+            register_subject(path)
+            resolution_subjects.add((undl_id, path[-1]))
 
         votes.append({
             "undl_id": undl_id,
@@ -410,9 +443,9 @@ def ingest():
         }
         process_resolution(undl_id, res_fields, source, line)
 
-        for subj in subjects:
-            subject_set.add(subj)
-            resolution_subjects.add((undl_id, subj))
+        for path in subjects:
+            register_subject(path)
+            resolution_subjects.add((undl_id, path[-1]))
 
         perm = parse_bool(row.get("permanent_member"))
         if ms_code in P5:
@@ -425,8 +458,11 @@ def ingest():
             "vote_note": clean(row.get("vote_note")),
         })
 
-    # --- Assign subject IDs (sorted alphabetically for determinism) ---
-    subject_id_map = {name: i + 1 for i, name in enumerate(sorted(subject_set))}
+    # --- Assign subject IDs (alphabetical for determinism) ---
+    ordered_names = sorted(subject_names)
+    subject_id_map: dict[str, int] = {
+        name: i + 1 for i, name in enumerate(ordered_names)
+    }
 
     # --- Write outputs (sorted by PK) ---
     def w(name):
@@ -464,12 +500,23 @@ def ingest():
                 sql_val(m49),
             ])
 
-    # subjects.csv
+    # subjects.csv (globally unique names; hierarchy lives in subject_parents)
     with w("subjects.csv") as f:
         wr = csv.writer(f, quoting=csv.QUOTE_MINIMAL)
         wr.writerow(["id", "name"])
-        for name in sorted(subject_set):
+        for name in ordered_names:
             wr.writerow([subject_id_map[name], name])
+
+    # subject_parents.csv (many-to-many child → parent edges; the subject DAG)
+    with w("subject_parents.csv") as f:
+        wr = csv.writer(f, quoting=csv.QUOTE_MINIMAL)
+        wr.writerow(["child_id", "parent_id"])
+        edge_rows = sorted(
+            (subject_id_map[child], subject_id_map[parent])
+            for child, parent in subject_edges
+        )
+        for child_id, parent_id in edge_rows:
+            wr.writerow([child_id, parent_id])
 
     # resolutions.csv
     res_cols = [
@@ -519,7 +566,7 @@ def ingest():
 
     # resolution_subjects.csv
     rs_rows = sorted(
-        ((undl_id, subject_id_map[name]) for undl_id, name in resolution_subjects),
+        {(undl_id, subject_id_map[name]) for undl_id, name in resolution_subjects},
         key=lambda x: (x[0], x[1]),
     )
     with w("resolution_subjects.csv") as f:
@@ -537,7 +584,9 @@ def ingest():
     total_segments = sum(len(s) for s in segments_by_code.values())
     print(f"countries:           {len(countries)}")
     print(f"country_names:       {total_segments}")
-    print(f"subjects:            {len(subject_set)}")
+    children = {child for child, _ in subject_edges}
+    roots = len(subject_names - children)
+    print(f"subjects:            {len(subject_names)} (roots={roots}, edges={len(subject_edges)})")
     print(f"resolutions:         {len(resolutions)}")
     print(f"votes:               {len(votes)}")
     print(f"resolution_subjects: {len(resolution_subjects)}")

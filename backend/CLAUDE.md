@@ -53,7 +53,7 @@ Two ISO codes (`GER`, `SCG`) appear in vote data but not the auth file. They're 
 ### Other transformations worth knowing
 
 - `drafts` field is pipe-delimited in source, emitted as a Postgres array literal `{a,b,c}`.
-- `subjects` are deduped globally into a surrogate-key table; `resolution_subjects` is the junction.
+- `subjects` form a **DAG**, not a tree: names are globally unique (`subjects.name UNIQUE`) and parent relationships live in a `subject_parents(child_id, parent_id)` junction. In the source cell, `|` separates distinct top-level topical references and `--` separates parent → subtopic levels (e.g. `AFRICA--REGIONAL SECURITY|TERRORISM` → two references: a two-deep one and a root). The DAG matters because generic terms like `REPORTS`, `UN`, `RECOMMENDATIONS`, `POLITICAL CONDITIONS` legitimately appear under many parents — they're one node with many parent edges, not many duplicate nodes. `resolution_subjects` links each `|`-reference to its **leaf** node only; descendant queries walk `subject_parents` with a recursive CTE.
 - SC `permanent_member` is forced to `True` for the P5 (`USA, CHN, RUS, FRA, GBR`) regardless of source value — this lets `vote='N' AND permanent_member=true` serve as the veto predicate.
 - GA totals come as floats (`159.0`), SC as ints — both go through `to_int_or_none` which handles both.
 - Empty cells become SQL `NULL` (empty CSV field), never `0` or `""`.

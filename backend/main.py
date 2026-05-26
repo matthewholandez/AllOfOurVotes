@@ -31,6 +31,7 @@ SEED_TABLES = [
     ("countries",           "countries.csv"),
     ("country_names",       "country_names.csv"),
     ("subjects",            "subjects.csv"),
+    ("subject_parents",     "subject_parents.csv"),
     ("resolutions",         "resolutions.csv"),
     ("votes",               "votes.csv"),
     ("resolution_subjects", "resolution_subjects.csv"),

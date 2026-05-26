@@ -16,6 +16,13 @@ CREATE TABLE IF NOT EXISTS subjects (
     name TEXT UNIQUE NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS subject_parents (
+    child_id  INTEGER NOT NULL REFERENCES subjects(id),
+    parent_id INTEGER NOT NULL REFERENCES subjects(id),
+    PRIMARY KEY (child_id, parent_id),
+    CHECK (child_id <> parent_id)
+);
+
 CREATE TABLE IF NOT EXISTS resolutions (
     undl_id           INTEGER PRIMARY KEY,
     body              CHAR(2) NOT NULL,
@@ -56,3 +63,4 @@ CREATE INDEX IF NOT EXISTS votes_ms_code_idx       ON votes(ms_code);
 CREATE INDEX IF NOT EXISTS resolutions_date_idx    ON resolutions(vote_date);
 CREATE INDEX IF NOT EXISTS resolutions_body_idx    ON resolutions(body);
 CREATE INDEX IF NOT EXISTS country_names_lookup_idx ON country_names(ms_code, valid_from, valid_to);
+CREATE INDEX IF NOT EXISTS subject_parents_parent_idx ON subject_parents(parent_id);

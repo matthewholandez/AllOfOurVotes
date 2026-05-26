@@ -32,8 +32,7 @@
       <h4>About</h4>
       <ul>
         <li><a href="/methodology">Methodology</a></li>
-        <li><a href="/methodology#sources">Sources</a></li>
-        <li><a href="mailto:hello@allofourvotes.org">Report a data error</a></li>
+        <li><a href="/privacy">Privacy</a></li>
       </ul>
     </div>
   </div>

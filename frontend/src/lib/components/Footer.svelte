@@ -25,7 +25,7 @@
       <ul>
         <li><a href="/api/docs">API</a></li>
         <li><a href="https://digitallibrary.un.org">UN Digital Library</a></li>
-        <li><a href="https://github.com">GitHub</a></li>
+        <li><a href="https://github.com/matthewholandez/AllOfOurVotes">GitHub</a></li>
       </ul>
     </div>
     <div>

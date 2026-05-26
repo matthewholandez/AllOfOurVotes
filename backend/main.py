@@ -10,9 +10,15 @@ import os
 from contextlib import asynccontextmanager
 
 import asyncpg
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from routers import countries, resolutions
+
+# Data is updated only via offline re-seeds, so we can cache aggressively at
+# Vercel's CDN. s-maxage is the CDN TTL; stale-while-revalidate lets the CDN
+# serve a stale response while it refreshes in the background.
+CACHE_CONTROL = "public, s-maxage=86400, stale-while-revalidate=604800"
+NO_CACHE_PATHS = {"/health"}
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/allofourvotes"
@@ -50,6 +56,27 @@ app.add_middleware(
     allow_methods=["GET"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def add_cache_headers(request: Request, call_next):
+    response = await call_next(request)
+    if (
+        request.method == "GET"
+        and response.status_code == 200
+        and request.url.path not in NO_CACHE_PATHS
+        and "cache-control" not in response.headers
+    ):
+        response.headers["Cache-Control"] = CACHE_CONTROL
+        # Ensure the CDN keys cached entries by Origin so CORS responses
+        # remain correct across allowed frontends.
+        existing_vary = response.headers.get("Vary")
+        response.headers["Vary"] = (
+            f"{existing_vary}, Origin" if existing_vary else "Origin"
+        )
+    return response
+
+
 app.include_router(countries.router)
 app.include_router(resolutions.router)
 

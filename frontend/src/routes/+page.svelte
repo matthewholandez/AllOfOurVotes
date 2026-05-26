@@ -12,7 +12,7 @@
 </script>
 
 <svelte:head>
-  <title>AllOfOurVotes — every UN vote, on the record</title>
+  <title>AllOfOurVotes</title>
 </svelte:head>
 
 <main>
@@ -20,7 +20,7 @@
     <section class="hero">
       <h1>Every vote in the General Assembly, on the record.</h1>
       <p class="lede">
-        AllOfOurVotes turns the United Nations' public voting record into something you can search, read, and cite. {data.resolutions.total.toLocaleString()} resolutions, {data.subjects.length} topics, 203 member states.
+        We turn the United Nations' public voting record into something you can search, read, and cite. {data.resolutions.total.toLocaleString()} resolutions, {data.subjects.length} topics, 203 member states.
       </p>
       <div class="cta">
         <a class="btn primary" href="/resolutions">Browse resolutions</a>

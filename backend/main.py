@@ -8,15 +8,22 @@ Run: `uv run uvicorn main:app --reload`
 
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import asyncpg
+from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from routers import countries, resolutions
 
-# Data is updated only via offline re-seeds, so we can cache aggressively at
-# Vercel's CDN. s-maxage is the CDN TTL; stale-while-revalidate lets the CDN
-# serve a stale response while it refreshes in the background.
+# Inject .env files for local development.
+_HERE = Path(__file__).parent
+load_dotenv(_HERE / ".env.dev", override=False)
+load_dotenv(_HERE / ".env", override=False)
+
+# Aggressive caching for Vercel CDN
+# - s-maxage => CDN TTL
+# - stale-while-revalidate => serve stale data while refreshing in the background
 CACHE_CONTROL = "public, s-maxage=86400, stale-while-revalidate=604800"
 NO_CACHE_PATHS = {"/health"}
 
@@ -24,7 +31,7 @@ DATABASE_URL = os.environ.get(
     "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/allofourvotes"
 )
 
-# Comma-separated list of allowed frontend origins.
+# Allowed frontend origins
 CORS_ORIGINS = [
     o.strip()
     for o in os.environ.get("CORS_ORIGINS", "http://localhost:5173").split(",")
